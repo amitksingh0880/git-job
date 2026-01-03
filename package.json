@@ -1,0 +1,29 @@
+{
+    "name": "git-job",
+    "version": "1.0.0",
+    "description": "Automated GitHub contribution system to maintain daily activity",
+    "main": "dist/contribute.js",
+    "scripts": {
+        "build": "tsc",
+        "contribute": "ts-node contribute.ts",
+        "start": "npm run build && node dist/contribute.js",
+        "test": "ts-node contribute.ts"
+    },
+    "keywords": [
+        "github",
+        "automation",
+        "contributions",
+        "git",
+        "typescript"
+    ],
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "@types/node": "^20.10.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.3.3"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

@@ -1,0 +1,52 @@
+name: Daily GitHub Contribution
+
+on:
+  schedule:
+    # Runs every day at 11:00 PM IST (5:30 PM UTC)
+    - cron: '30 17 * * *'
+  
+  # Allows manual trigger from Actions tab
+  workflow_dispatch:
+
+jobs:
+  contribute:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build TypeScript
+        run: npm run build
+      
+      - name: Generate and commit contribution
+        run: |
+          node dist/contribute.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Verify contribution
+        run: |
+          echo "Latest commit:"
+          git log -1 --oneline
+          echo ""
+          echo "Contribution files:"
+          ls -la contributions/ || echo "No contributions directory yet"
