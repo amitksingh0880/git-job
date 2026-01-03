@@ -10,7 +10,7 @@ import * as path from 'path';
 import { execSync } from 'child_process';
 
 // Configuration
-const CONTRIBUTIONS_DIR = path.join(__dirname, 'contributions');
+const CONTRIBUTIONS_DIR = path.join(__dirname, '..', 'contributions');
 const CONTRIBUTION_TYPES = ['til', 'snippet', 'note', 'progress'] as const;
 
 type ContributionType = typeof CONTRIBUTION_TYPES[number];
