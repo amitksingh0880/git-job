@@ -12,6 +12,7 @@ Built with **TypeScript** for type safety and maintainability.
   - 💻 Code snippets and utilities
   - 📝 Technical notes and research
   - 📊 Project progress updates
+  - 🚀 **Complete TypeScript projects** with multiple files, tests, and documentation
 - **GitHub Actions**: Runs in the cloud, no local machine required
 - **Zero Maintenance**: Set it and forget it
 - **Variety**: Different content types to keep contributions interesting
@@ -127,6 +128,21 @@ Daily progress logs and accomplishments.
 - Bug fixes
 - Documentation updates
 - Feature implementations
+
+### Complete Projects 🚀
+Full TypeScript projects with multiple files, including:
+
+**Project types:**
+- **Task Queue**: Priority-based async task queue with concurrency control
+- **Rate Limiter**: Token bucket algorithm implementation
+- **Event Emitter**: Type-safe event system with generics
+
+**Each project includes:**
+- Complete source code (`.ts` files)
+- Comprehensive test suite (`.test.ts` files)
+- Package configuration (`package.json`)
+- Full documentation (`README.md`)
+- Production-ready, type-safe code
 
 ## ⚙️ Configuration
 
