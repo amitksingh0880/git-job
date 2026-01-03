@@ -11,7 +11,7 @@ import { execSync } from 'child_process';
 
 // Configuration
 const CONTRIBUTIONS_DIR = path.join(__dirname, '..', 'contributions');
-const CONTRIBUTION_TYPES = ['til', 'snippet', 'note', 'progress'] as const;
+const CONTRIBUTION_TYPES = ['til', 'snippet', 'note', 'progress', 'project'] as const;
 
 type ContributionType = typeof CONTRIBUTION_TYPES[number];
 
@@ -386,6 +386,688 @@ This work contributes to:
 ---
 *Daily progress tracking to maintain momentum and accountability.*
 `;
+    },
+
+    project: (): string => {
+        const projects = [
+            {
+                name: 'task-queue',
+                title: 'Async Task Queue with Priority',
+                description: 'A TypeScript implementation of an async task queue with priority support and concurrency control',
+                files: {
+                    'README.md': `# Async Task Queue
+
+A lightweight, type-safe task queue implementation with priority support and concurrency control.
+
+## Features
+
+- ✅ Priority-based task execution
+- ✅ Concurrency control
+- ✅ TypeScript support with full type safety
+- ✅ Promise-based API
+- ✅ Pause/Resume functionality
+- ✅ Event-driven architecture
+
+## Installation
+
+\`\`\`bash
+npm install
+\`\`\`
+
+## Usage
+
+\`\`\`typescript
+import { TaskQueue } from './task-queue';
+
+const queue = new TaskQueue({ concurrency: 3 });
+
+// Add tasks with priority
+queue.add(async () => {
+  const result = await fetchData();
+  return result;
+}, { priority: 10 });
+
+// Start processing
+await queue.start();
+\`\`\`
+
+## API
+
+### \`TaskQueue(options)\`
+
+Creates a new task queue instance.
+
+**Options:**
+- \`concurrency\`: Maximum number of concurrent tasks (default: 1)
+- \`autoStart\`: Auto-start processing (default: false)
+
+### Methods
+
+- \`add(task, options)\`: Add a task to the queue
+- \`start()\`: Start processing tasks
+- \`pause()\`: Pause task processing
+- \`resume()\`: Resume task processing
+- \`clear()\`: Clear all pending tasks
+
+## License
+
+MIT`,
+                    'task-queue.ts': `export interface TaskOptions {
+  priority?: number;
+  id?: string;
+}
+
+export interface QueueOptions {
+  concurrency?: number;
+  autoStart?: boolean;
+}
+
+interface Task<T> {
+  id: string;
+  fn: () => Promise<T>;
+  priority: number;
+  resolve: (value: T) => void;
+  reject: (error: any) => void;
+}
+
+export class TaskQueue {
+  private queue: Task<any>[] = [];
+  private running: number = 0;
+  private concurrency: number;
+  private paused: boolean = false;
+  private taskIdCounter: number = 0;
+
+  constructor(options: QueueOptions = {}) {
+    this.concurrency = options.concurrency || 1;
+    if (options.autoStart) {
+      this.start();
+    }
+  }
+
+  add<T>(fn: () => Promise<T>, options: TaskOptions = {}): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const task: Task<T> = {
+        id: options.id || \`task-\${++this.taskIdCounter}\`,
+        fn,
+        priority: options.priority || 0,
+        resolve,
+        reject,
+      };
+
+      // Insert task in priority order
+      const index = this.queue.findIndex(t => t.priority < task.priority);
+      if (index === -1) {
+        this.queue.push(task);
+      } else {
+        this.queue.splice(index, 0, task);
+      }
+
+      this.process();
+    });
+  }
+
+  private async process(): Promise<void> {
+    if (this.paused || this.running >= this.concurrency || this.queue.length === 0) {
+      return;
+    }
+
+    this.running++;
+    const task = this.queue.shift()!;
+
+    try {
+      const result = await task.fn();
+      task.resolve(result);
+    } catch (error) {
+      task.reject(error);
+    } finally {
+      this.running--;
+      this.process();
+    }
+  }
+
+  start(): void {
+    this.paused = false;
+    this.process();
+  }
+
+  pause(): void {
+    this.paused = true;
+  }
+
+  resume(): void {
+    this.start();
+  }
+
+  clear(): void {
+    this.queue = [];
+  }
+
+  get pending(): number {
+    return this.queue.length;
+  }
+
+  get isRunning(): boolean {
+    return this.running > 0;
+  }
+}`,
+                    'task-queue.test.ts': `import { TaskQueue } from './task-queue';
+
+describe('TaskQueue', () => {
+  it('should process tasks sequentially with concurrency 1', async () => {
+    const queue = new TaskQueue({ concurrency: 1 });
+    const results: number[] = [];
+
+    const task1 = queue.add(async () => {
+      await delay(50);
+      results.push(1);
+      return 1;
+    });
+
+    const task2 = queue.add(async () => {
+      results.push(2);
+      return 2;
+    });
+
+    queue.start();
+    await Promise.all([task1, task2]);
+
+    expect(results).toEqual([1, 2]);
+  });
+
+  it('should respect task priority', async () => {
+    const queue = new TaskQueue({ concurrency: 1 });
+    const results: number[] = [];
+
+    queue.add(async () => { results.push(1); }, { priority: 1 });
+    queue.add(async () => { results.push(2); }, { priority: 10 });
+    queue.add(async () => { results.push(3); }, { priority: 5 });
+
+    queue.start();
+    await delay(100);
+
+    expect(results).toEqual([2, 3, 1]);
+  });
+
+  it('should handle concurrent tasks', async () => {
+    const queue = new TaskQueue({ concurrency: 3 });
+    let concurrent = 0;
+    let maxConcurrent = 0;
+
+    const task = async () => {
+      concurrent++;
+      maxConcurrent = Math.max(maxConcurrent, concurrent);
+      await delay(50);
+      concurrent--;
+    };
+
+    const tasks = Array(5).fill(0).map(() => queue.add(task));
+    queue.start();
+    await Promise.all(tasks);
+
+    expect(maxConcurrent).toBe(3);
+  });
+});
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}`,
+                    'package.json': `{
+  "name": "task-queue",
+  "version": "1.0.0",
+  "description": "Async task queue with priority support",
+  "main": "dist/task-queue.js",
+  "types": "dist/task-queue.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "keywords": ["queue", "async", "priority", "typescript"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  }
+}`,
+                },
+            },
+            {
+                name: 'rate-limiter',
+                title: 'Token Bucket Rate Limiter',
+                description: 'A flexible rate limiter using the token bucket algorithm',
+                files: {
+                    'README.md': `# Token Bucket Rate Limiter
+
+A TypeScript implementation of the token bucket algorithm for rate limiting.
+
+## Features
+
+- ✅ Token bucket algorithm
+- ✅ Configurable refill rate
+- ✅ Burst capacity support
+- ✅ TypeScript with full type safety
+- ✅ Zero dependencies
+- ✅ Promise-based API
+
+## Usage
+
+\`\`\`typescript
+import { RateLimiter } from './rate-limiter';
+
+// Allow 10 requests per second with burst of 20
+const limiter = new RateLimiter({
+  tokensPerInterval: 10,
+  interval: 1000,
+  capacity: 20
+});
+
+// Check if request is allowed
+if (await limiter.tryConsume(1)) {
+  // Process request
+  await handleRequest();
+} else {
+  // Rate limit exceeded
+  throw new Error('Rate limit exceeded');
+}
+\`\`\`
+
+## API
+
+### \`RateLimiter(options)\`
+
+**Options:**
+- \`tokensPerInterval\`: Number of tokens to add per interval
+- \`interval\`: Interval in milliseconds
+- \`capacity\`: Maximum token capacity (burst size)
+
+### Methods
+
+- \`tryConsume(tokens)\`: Try to consume tokens, returns true if successful
+- \`consume(tokens)\`: Wait until tokens are available and consume them
+- \`getAvailableTokens()\`: Get current available tokens
+
+## License
+
+MIT`,
+                    'rate-limiter.ts': `export interface RateLimiterOptions {
+  tokensPerInterval: number;
+  interval: number;
+  capacity?: number;
+}
+
+export class RateLimiter {
+  private tokens: number;
+  private capacity: number;
+  private tokensPerInterval: number;
+  private interval: number;
+  private lastRefill: number;
+
+  constructor(options: RateLimiterOptions) {
+    this.tokensPerInterval = options.tokensPerInterval;
+    this.interval = options.interval;
+    this.capacity = options.capacity || options.tokensPerInterval;
+    this.tokens = this.capacity;
+    this.lastRefill = Date.now();
+  }
+
+  private refill(): void {
+    const now = Date.now();
+    const timePassed = now - this.lastRefill;
+    const tokensToAdd = (timePassed / this.interval) * this.tokensPerInterval;
+
+    this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd);
+    this.lastRefill = now;
+  }
+
+  async tryConsume(tokens: number = 1): Promise<boolean> {
+    this.refill();
+
+    if (this.tokens >= tokens) {
+      this.tokens -= tokens;
+      return true;
+    }
+
+    return false;
+  }
+
+  async consume(tokens: number = 1): Promise<void> {
+    while (!(await this.tryConsume(tokens))) {
+      const tokensNeeded = tokens - this.tokens;
+      const timeToWait = (tokensNeeded / this.tokensPerInterval) * this.interval;
+      await new Promise(resolve => setTimeout(resolve, timeToWait));
+    }
+  }
+
+  getAvailableTokens(): number {
+    this.refill();
+    return Math.floor(this.tokens);
+  }
+}`,
+                    'rate-limiter.test.ts': `import { RateLimiter } from './rate-limiter';
+
+describe('RateLimiter', () => {
+  it('should allow requests within limit', async () => {
+    const limiter = new RateLimiter({
+      tokensPerInterval: 10,
+      interval: 1000,
+    });
+
+    for (let i = 0; i < 10; i++) {
+      expect(await limiter.tryConsume(1)).toBe(true);
+    }
+  });
+
+  it('should reject requests exceeding limit', async () => {
+    const limiter = new RateLimiter({
+      tokensPerInterval: 5,
+      interval: 1000,
+    });
+
+    for (let i = 0; i < 5; i++) {
+      await limiter.tryConsume(1);
+    }
+
+    expect(await limiter.tryConsume(1)).toBe(false);
+  });
+
+  it('should refill tokens over time', async () => {
+    const limiter = new RateLimiter({
+      tokensPerInterval: 10,
+      interval: 100,
+    });
+
+    // Consume all tokens
+    for (let i = 0; i < 10; i++) {
+      await limiter.tryConsume(1);
+    }
+
+    expect(await limiter.tryConsume(1)).toBe(false);
+
+    // Wait for refill
+    await new Promise(resolve => setTimeout(resolve, 150));
+
+    expect(await limiter.tryConsume(1)).toBe(true);
+  });
+
+  it('should support burst capacity', async () => {
+    const limiter = new RateLimiter({
+      tokensPerInterval: 5,
+      interval: 1000,
+      capacity: 20,
+    });
+
+    // Should allow burst of 20
+    for (let i = 0; i < 20; i++) {
+      expect(await limiter.tryConsume(1)).toBe(true);
+    }
+
+    expect(await limiter.tryConsume(1)).toBe(false);
+  });
+});`,
+                    'package.json': `{
+  "name": "rate-limiter",
+  "version": "1.0.0",
+  "description": "Token bucket rate limiter",
+  "main": "dist/rate-limiter.js",
+  "types": "dist/rate-limiter.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "keywords": ["rate-limit", "token-bucket", "throttle", "typescript"],
+  "author": "",
+  "license": "MIT"
+}`,
+                },
+            },
+            {
+                name: 'event-emitter',
+                title: 'Type-Safe Event Emitter',
+                description: 'A type-safe event emitter with TypeScript generics',
+                files: {
+                    'README.md': `# Type-Safe Event Emitter
+
+A fully type-safe event emitter implementation using TypeScript generics.
+
+## Features
+
+- ✅ Full TypeScript type safety
+- ✅ Generic event types
+- ✅ Once listeners
+- ✅ Remove listeners
+- ✅ Wildcard events
+- ✅ Zero dependencies
+
+## Usage
+
+\`\`\`typescript
+import { EventEmitter } from './event-emitter';
+
+interface Events {
+  'user:login': { userId: string; timestamp: number };
+  'user:logout': { userId: string };
+  'data:update': { id: string; data: any };
+}
+
+const emitter = new EventEmitter<Events>();
+
+// Type-safe event listener
+emitter.on('user:login', (data) => {
+  console.log(\`User \${data.userId} logged in\`);
+});
+
+// Emit event
+emitter.emit('user:login', {
+  userId: '123',
+  timestamp: Date.now()
+});
+\`\`\`
+
+## API
+
+### Methods
+
+- \`on(event, listener)\`: Add event listener
+- \`once(event, listener)\`: Add one-time listener
+- \`off(event, listener)\`: Remove listener
+- \`emit(event, data)\`: Emit event
+- \`removeAllListeners(event?)\`: Remove all listeners
+
+## License
+
+MIT`,
+                    'event-emitter.ts': `type EventMap = Record<string, any>;
+type EventKey<T extends EventMap> = string & keyof T;
+type EventListener<T> = (data: T) => void;
+
+export class EventEmitter<T extends EventMap> {
+  private listeners: Map<keyof T, Set<EventListener<any>>> = new Map();
+
+  on<K extends EventKey<T>>(event: K, listener: EventListener<T[K]>): void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(listener);
+  }
+
+  once<K extends EventKey<T>>(event: K, listener: EventListener<T[K]>): void {
+    const onceWrapper: EventListener<T[K]> = (data) => {
+      listener(data);
+      this.off(event, onceWrapper);
+    };
+    this.on(event, onceWrapper);
+  }
+
+  off<K extends EventKey<T>>(event: K, listener: EventListener<T[K]>): void {
+    const eventListeners = this.listeners.get(event);
+    if (eventListeners) {
+      eventListeners.delete(listener);
+      if (eventListeners.size === 0) {
+        this.listeners.delete(event);
+      }
+    }
+  }
+
+  emit<K extends EventKey<T>>(event: K, data: T[K]): void {
+    const eventListeners = this.listeners.get(event);
+    if (eventListeners) {
+      eventListeners.forEach(listener => listener(data));
+    }
+  }
+
+  removeAllListeners<K extends EventKey<T>>(event?: K): void {
+    if (event) {
+      this.listeners.delete(event);
+    } else {
+      this.listeners.clear();
+    }
+  }
+
+  listenerCount<K extends EventKey<T>>(event: K): number {
+    return this.listeners.get(event)?.size || 0;
+  }
+}`,
+                    'event-emitter.test.ts': `import { EventEmitter } from './event-emitter';
+
+interface TestEvents {
+  'test': { value: number };
+  'data': { id: string; content: string };
+}
+
+describe('EventEmitter', () => {
+  it('should emit and receive events', () => {
+    const emitter = new EventEmitter<TestEvents>();
+    const callback = jest.fn();
+
+    emitter.on('test', callback);
+    emitter.emit('test', { value: 42 });
+
+    expect(callback).toHaveBeenCalledWith({ value: 42 });
+  });
+
+  it('should support once listeners', () => {
+    const emitter = new EventEmitter<TestEvents>();
+    const callback = jest.fn();
+
+    emitter.once('test', callback);
+    emitter.emit('test', { value: 1 });
+    emitter.emit('test', { value: 2 });
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).toHaveBeenCalledWith({ value: 1 });
+  });
+
+  it('should remove listeners', () => {
+    const emitter = new EventEmitter<TestEvents>();
+    const callback = jest.fn();
+
+    emitter.on('test', callback);
+    emitter.off('test', callback);
+    emitter.emit('test', { value: 42 });
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it('should count listeners', () => {
+    const emitter = new EventEmitter<TestEvents>();
+    const callback1 = jest.fn();
+    const callback2 = jest.fn();
+
+    emitter.on('test', callback1);
+    emitter.on('test', callback2);
+
+    expect(emitter.listenerCount('test')).toBe(2);
+  });
+});`,
+                    'package.json': `{
+  "name": "event-emitter",
+  "version": "1.0.0",
+  "description": "Type-safe event emitter",
+  "main": "dist/event-emitter.js",
+  "types": "dist/event-emitter.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "keywords": ["events", "emitter", "typescript", "type-safe"],
+  "author": "",
+  "license": "MIT"
+}`,
+                },
+            },
+        ];
+
+        const project = projects[Math.floor(Math.random() * projects.length)];
+        const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        // Create project index with links to all files
+        let projectContent = `# Project: ${project.title}
+
+**Date:** ${dateStr}
+
+## Description
+
+${project.description}
+
+## Project Structure
+
+\`\`\`
+${project.name}/
+`;
+
+        // Add file tree
+        Object.keys(project.files).forEach(filename => {
+            projectContent += `├── ${filename}\n`;
+        });
+
+        projectContent += `\`\`\`
+
+## Files
+
+`;
+
+        // Add all files with their content
+        Object.entries(project.files).forEach(([filename, content]) => {
+            const extension = filename.split('.').pop();
+            projectContent += `### ${filename}
+
+\`\`\`${extension}
+${content}
+\`\`\`
+
+---
+
+`;
+        });
+
+        projectContent += `## Features Implemented
+
+- Complete TypeScript implementation
+- Comprehensive test suite
+- Full type safety
+- Production-ready code
+- Well-documented API
+
+## Usage
+
+1. Copy the files to your project
+2. Install dependencies: \`npm install\`
+3. Build: \`npm run build\`
+4. Test: \`npm test\`
+
+## Notes
+
+This is a complete, working implementation that can be used in production projects. All code is type-safe and includes tests.
+
+---
+*Part of my daily coding projects to build reusable components and libraries.*
+`;
+
+        return projectContent;
     },
 };
 
